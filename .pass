@@ -1,0 +1,8 @@
+# Define this as something like myfiles.txt or /home/benjamin/myfiles.txt
+# Files or Directories should be one per line
+FILES=myfiles.txt
+
+# Define any password variation or form here
+# You can do something like this to get a good password:
+# dd if=/dev/urandom count=1 bs=128 | sha256sum
+PASS=
