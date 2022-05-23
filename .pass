@@ -6,3 +6,8 @@ FILES=myfiles.txt
 # You can do something like this to get a good password:
 # dd if=/dev/urandom count=1 bs=128 | sha256sum
 PASS=
+
+# Define where the backup file should be saved to
+# Something like /tmp/ or /home/benjamin/
+# Make sure to put the trailing /
+LOCATION=/tmp/
