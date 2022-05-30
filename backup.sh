@@ -9,10 +9,11 @@ DATE=`which date`
 ECHO=`which echo`
 HOST=`which hostname`
 
+CURL=`which curl`
 OPENSSL=`which openssl`
 RSYNC=`which rsync`
 TAR=`which tar`
-BINARIES=("openssl" "rsync" "tar")
+BINARIES=("curl" "openssl" "rsync" "tar")
 ### END VAR SETUP ###
 
 ### BEGIN FUNCTIONS ###
@@ -53,9 +54,22 @@ check_folder() {
 
 run_backup() {
     if [ ! -z "$DEBUG" ]; then
+        # The goal here is to create a bz2 file based on the provided file list as bz2 provides some of the best compression
+        # and we pass the output of that bzipped2 data straight to openssl to create a salted, encrypted file based on
+        # a provided password string
         RESULT=$(${TAR} -jvcO -T $FILES | ${OPENSSL} enc -aes-256-cbc -md sha256 -pass pass:$PASS > "${LOCATION}backup.tar.enc")
     else
         RESULT=$(${TAR} -jcO -T $FILES | ${OPENSSL} enc -aes-256-cbc -md sha256 -pass pass:$PASS > "${LOCATION}backup.tar.enc")
+    fi
+    ${ECHO} "$RESULT"
+}
+
+copy_backup() {
+    if [ ! -z "$DEBUG" ]; then
+        # Gotta love bash variable scoping, we can reuse the $name variable from the log function here
+        RESULT=$(${CURL} -vvvv -SL -u $NEXTCLOUD_USER:$NEXTCLOUD_PASS -T ${LOCATION}backup.tar.enc "$NEXTCLOUD_URL/$name/")
+    else
+        RESULT=$(${CURL} -sL -u $NEXTCLOUD_USER:$NEXTCLOUD_PASS -T ${LOCATION}backup.tar.enc "$NEXTCLOUD_URL/$name/")
     fi
     ${ECHO} "$RESULT"
 }
@@ -81,7 +95,8 @@ begin() {
     log "INFO" "Dependency check complete!"
 
     log "INFO" "Starting options file check..."
-    check_file $REQUIRED_FILE
+    log "DEBUG" "Argument #1: $REQUIRED_FILES"
+    [ -z "$REQUIRED_FILE" ] && { log "ERROR" ".pass or .options file not specified but it is required! Cannot continue!"; exit 1004; }
     source $REQUIRED_FILE
     log "INFO" "Options file check complete!"
 
@@ -95,21 +110,17 @@ main() {
 
     RESULT=$(run_backup)
     log "DEBUG" "Result of run_backup function: $RESULT"
-
+    [ ! -z "$RESULT" ] && { log "ERROR" "Unable to complete backup! Consider enabling DEBUG logging..."; exit 1005; }
     log "INFO" "Backup complete!"
+
+    log "INFO" "Copying backup to central server..."
+    RESULT=$(copy_backup)
+    log "DEBUG" "Result of copy_backup function: $RESULT"
+    [ ! -z "$RESULT" ] && { log "ERROR" "Unable to complete copy! Consider enabling DEBUG logging..."; exit 1006; }
+    log "INFO" "Copy complete!"
 }
 ### END FUNCTIONS ###
 
 ### MAIN ###
 begin
 main
-
-# Bring in the password and file list from a read-only file
-# Make sure file is only owned by the user doing the backups
-# source .pass
-
-# TAR=`which tar`
-# OPENSSL=`which openssl`
-
-# Create a bzip2 file based on the files in the list and pass the data to openssl and output as a .tar.enc file
-# ${TAR} -jvcO -T $FILES | ${OPENSSL} enc -aes-256-cbc -md sha256 -pass pass:$PASS > /tmp/backup.tar.enc

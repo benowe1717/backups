@@ -11,3 +11,13 @@ PASS=
 # Something like /tmp/ or /home/benjamin/
 # Make sure to put the trailing /
 LOCATION=/tmp/
+
+# Define the NextCloud username and password here
+# So that you can upload the backups "offsite" to your
+# cloud server
+# REMINDER that these uploads happen to a folder underneath
+# of this user based on the hostname of the machine running
+# the backup script, so make sure you create the folder ahead of time
+NEXTCLOUD_USER=""
+NEXTCLOUD_PASS=""
+NEXTCLOUD_URL=""
