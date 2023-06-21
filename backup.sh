@@ -10,6 +10,7 @@ ECHO=`which echo`
 HOST=`which hostname`
 
 CURL=`which curl`
+LS=`which ls`
 OPENSSL=`which openssl`
 RSYNC=`which rsync`
 TAR=`which tar`
@@ -59,7 +60,7 @@ run_backup() {
         # a provided password string
         RESULT=$(${TAR} -jvcO -T $FILES | ${OPENSSL} enc -aes-256-cbc -md sha256 -pass pass:$PASS > "${LOCATION}backup.tar.enc")
     else
-        RESULT=$(${TAR} -jcO -T $FILES | ${OPENSSL} enc -aes-256-cbc -md sha256 -pass pass:$PASS > "${LOCATION}backup.tar.enc")
+        RESULT=$(${TAR} --warning=none -jcO -T $FILES 2>/dev/null | ${OPENSSL} enc -aes-256-cbc -md sha256 -pass pass:$PASS > "${LOCATION}backup.tar.enc" 2>/dev/null)
     fi
     ${ECHO} "$RESULT"
 }
@@ -72,6 +73,42 @@ copy_backup() {
         RESULT=$(${CURL} -sL -u $NEXTCLOUD_USER:$NEXTCLOUD_PASS -T ${LOCATION}backup.tar.enc "$NEXTCLOUD_URL/$name/")
     fi
     ${ECHO} "$RESULT"
+}
+
+pre_backup() {
+    # -n = The length of STRING is greater than zero
+    if [ -n "$(${LS} -A ${PWD}/pre_scripts/ 2>/dev/null)" ]; then
+        log "INFO" "Pre-backup script(s) found! Executing script(s)..."
+        for i in `${LS} ${PWD}/pre_scripts/`; do
+            if [ ! -z "$DEBUG" ]; then
+                /bin/bash "${PWD}/pre_scripts/$i" 2>/dev/null
+            else
+                /bin/bash "${PWD}/pre_scripts/$i"
+            fi
+            if [ "$?" != 0 ]; then
+                log "ERROR" "${PWD}/pre_scripts/$i exited with $?! Consider enabling DEBUG logging..."
+                exit 1007
+            fi
+        done
+    fi
+}
+
+post_backup() {
+    # -n = The length of STRING is greater than zero
+    if [ -n "$(${LS} -A ${PWD}/post_scripts/ 2>/dev/null)" ]; then
+        log "INFO" "Post-backup script(s) found! Executing script(s)..."
+        for i in `${LS} ${PWD}/post_scripts/`; do
+            if [ ! -z "$DEBUG" ]; then
+                /bin/bash "${PWD}/post_scripts/${i}" 2>/dev/null
+            else
+                /bin/bash "${PWD}/post_scripts/${i}"
+            fi
+            if [ "$?" != 0 ]; then
+                log "ERROR" "${PWD}/post_scripts/${i} exited with ${$?}! Consider enabling DEBUG logging..."
+                exit 1008
+            fi
+        done
+    fi
 }
 
 begin() {
@@ -108,6 +145,10 @@ begin() {
 main() {
     log "INFO" "Starting backup..."
 
+    log "INFO" "Checking for any pre-backup scripts..."
+    pre_backup
+    log "INFO" "Pre-backup script(s) complete!"
+
     RESULT=$(run_backup)
     log "DEBUG" "Result of run_backup function: $RESULT"
     [ ! -z "$RESULT" ] && { log "ERROR" "Unable to complete backup! Consider enabling DEBUG logging..."; exit 1005; }
@@ -118,6 +159,10 @@ main() {
     log "DEBUG" "Result of copy_backup function: $RESULT"
     [ ! -z "$RESULT" ] && { log "ERROR" "Unable to complete copy! Consider enabling DEBUG logging..."; exit 1006; }
     log "INFO" "Copy complete!"
+
+    log "INFO" "Checking for any post-backup scripts..."
+    post_backup
+    log "INFO" "Post-backup script(s) complete!"
 }
 ### END FUNCTIONS ###
 
