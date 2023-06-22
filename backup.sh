@@ -10,11 +10,15 @@ ECHO=`which echo`
 HOST=`which hostname`
 
 CURL=`which curl`
+DIRNAME=`which dirname`
 LS=`which ls`
+PWD=`which pwd`
 OPENSSL=`which openssl`
 RSYNC=`which rsync`
 TAR=`which tar`
 BINARIES=("curl" "openssl" "rsync" "tar")
+
+SCRIPT_DIR=$()
 ### END VAR SETUP ###
 
 ### BEGIN FUNCTIONS ###
@@ -77,16 +81,16 @@ copy_backup() {
 
 pre_backup() {
     # -n = The length of STRING is greater than zero
-    if [ -n "$(${LS} -A ${PWD}/pre_scripts/ 2>/dev/null)" ]; then
+    if [ -n "$(${LS} -A $SCRIPT_DIR/pre_scripts/ 2>/dev/null)" ]; then
         log "INFO" "Pre-backup script(s) found! Executing script(s)..."
-        for i in `${LS} ${PWD}/pre_scripts/`; do
+        for i in `${LS} $SCRIPT_DIR/pre_scripts/`; do
             if [ ! -z "$DEBUG" ]; then
-                /bin/bash "${PWD}/pre_scripts/$i" 2>/dev/null
+                /bin/bash "$SCRIPT_DIR/pre_scripts/$i" 2>/dev/null
             else
-                /bin/bash "${PWD}/pre_scripts/$i"
+                /bin/bash "$SCRIPT_DIR/pre_scripts/$i"
             fi
             if [ "$?" != 0 ]; then
-                log "ERROR" "${PWD}/pre_scripts/$i exited with $?! Consider enabling DEBUG logging..."
+                log "ERROR" "$SCRIPT_DIR/pre_scripts/$i exited with $?! Consider enabling DEBUG logging..."
                 exit 1007
             fi
         done
@@ -95,16 +99,16 @@ pre_backup() {
 
 post_backup() {
     # -n = The length of STRING is greater than zero
-    if [ -n "$(${LS} -A ${PWD}/post_scripts/ 2>/dev/null)" ]; then
+    if [ -n "$(${LS} -A $SCRIPT_DIR/post_scripts/ 2>/dev/null)" ]; then
         log "INFO" "Post-backup script(s) found! Executing script(s)..."
-        for i in `${LS} ${PWD}/post_scripts/`; do
+        for i in `${LS} $SCRIPT_DIR/post_scripts/`; do
             if [ ! -z "$DEBUG" ]; then
-                /bin/bash "${PWD}/post_scripts/${i}" 2>/dev/null
+                /bin/bash "$SCRIPT_DIR/post_scripts/$i" 2>/dev/null
             else
-                /bin/bash "${PWD}/post_scripts/${i}"
+                /bin/bash "$SCRIPT_DIR/post_scripts/$i"
             fi
             if [ "$?" != 0 ]; then
-                log "ERROR" "${PWD}/post_scripts/${i} exited with ${$?}! Consider enabling DEBUG logging..."
+                log "ERROR" "$SCRIPT_DIR/post_scripts/$i exited with $?! Consider enabling DEBUG logging..."
                 exit 1008
             fi
         done
