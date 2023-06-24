@@ -18,7 +18,7 @@ RSYNC=`which rsync`
 TAR=`which tar`
 BINARIES=("curl" "openssl" "rsync" "tar")
 
-SCRIPT_DIR=$()
+SCRIPT_DIR=$(${DIRNAME} -- "$0")
 ### END VAR SETUP ###
 
 ### BEGIN FUNCTIONS ###
