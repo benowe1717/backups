@@ -5,9 +5,13 @@
 REQUIRED_FILE="$1"
 
 ### BEGIN VAR SETUP ###
+ERROR=0
+BACKUP_FILE="/tmp/.backup_complete"
+
 DATE=`which date`
 ECHO=`which echo`
 HOST=`which hostname`
+TEE=`which tee`
 
 CURL=`which curl`
 DIRNAME=`which dirname`
@@ -62,21 +66,32 @@ run_backup() {
         # The goal here is to create a bz2 file based on the provided file list as bz2 provides some of the best compression
         # and we pass the output of that bzipped2 data straight to openssl to create a salted, encrypted file based on
         # a provided password string
-        RESULT=$(${TAR} -jvcO -T $FILES | ${OPENSSL} enc -aes-256-cbc -md sha256 -pass pass:$PASS > "${LOCATION}backup.tar.enc")
+        if [ ! -z "$EXCLUDED_FILES" ]; then
+            RESULT=$(${TAR} -jvcO -X $EXCLUDED_FILES -T $FILES | ${OPENSSL} enc -aes-256-cbc -md sha256 -pass pass:$PASS > "${LOCATION}backup.tar.enc")
+        else
+            RESULT=$(${TAR} -jvcO -T $FILES | ${OPENSSL} enc -aes-256-cbc -md sha256 -pass pass:$PASS > "${LOCATION}backup.tar.enc")
+        fi
+        log "DEBUG" "The result of run_backup() is: $RESULT"
     else
-        RESULT=$(${TAR} --warning=none -jcO -T $FILES 2>/dev/null | ${OPENSSL} enc -aes-256-cbc -md sha256 -pass pass:$PASS > "${LOCATION}backup.tar.enc" 2>/dev/null)
+        if [ ! -z "$EXCLUDED_FILES" ]; then
+            RESULT=$(${TAR} --warning=none -jcO -X $EXCLUDED_FILES -T $FILES 2>/dev/null | ${OPENSSL} enc -aes-256-cbc -md sha256 -pass pass:$PASS > "${LOCATION}backup.tar.enc" 2>/dev/null)
+        else
+            RESULT=$(${TAR} --warning=none -jcO -T $FILES 2>/dev/null | ${OPENSSL} enc -aes-256-cbc -md sha256 -pass pass:$PASS > "${LOCATION}backup.tar.enc" 2>/dev/null)
+        fi
     fi
-    ${ECHO} "$RESULT"
+    
+    ${ECHO} $?
 }
 
 copy_backup() {
     if [ ! -z "$DEBUG" ]; then
         # Gotta love bash variable scoping, we can reuse the $name variable from the log function here
         RESULT=$(${CURL} -vvvv -SL -u $NEXTCLOUD_USER:$NEXTCLOUD_PASS -T ${LOCATION}backup.tar.enc "$NEXTCLOUD_URL/$name/")
+        log "DEBUG" "The result of copy_backup() is: $RESULT"
     else
         RESULT=$(${CURL} -sL -u $NEXTCLOUD_USER:$NEXTCLOUD_PASS -T ${LOCATION}backup.tar.enc "$NEXTCLOUD_URL/$name/")
     fi
-    ${ECHO} "$RESULT"
+    ${ECHO} $?
 }
 
 pre_backup() {
@@ -113,6 +128,10 @@ post_backup() {
             fi
         done
     fi
+}
+
+backup_complete() {
+    ${ECHO} "done" | ${TEE} "$BACKUP_FILE"
 }
 
 begin() {
@@ -153,20 +172,33 @@ main() {
     pre_backup
     log "INFO" "Pre-backup script(s) complete!"
 
+    log "INFO" "Running backup..."
     RESULT=$(run_backup)
-    log "DEBUG" "Result of run_backup function: $RESULT"
-    [ ! -z "$RESULT" ] && { log "ERROR" "Unable to complete backup! Consider enabling DEBUG logging..."; exit 1005; }
+    if [ $RESULT != "0" ]; then
+        log "ERROR" "Unable to complete backup! Consider enabling DEBUG logging..."
+        log "DEBUG" "The run_backup() function failed with error code: $RESULT"
+        ERROR="$RESULT"
+        exit 1005
+    fi
     log "INFO" "Backup complete!"
 
     log "INFO" "Copying backup to central server..."
     RESULT=$(copy_backup)
-    log "DEBUG" "Result of copy_backup function: $RESULT"
-    [ ! -z "$RESULT" ] && { log "ERROR" "Unable to complete copy! Consider enabling DEBUG logging..."; exit 1006; }
+    if [ $RESULT != "0" ]; then
+        log "ERROR" "Unable to complete copy! Consider enabling DEBUG logging..."
+        log "DEBUG" "The copy_backup() function failed with error code: $RESULT"
+        ERROR="$RESULT"
+        exit 1006
+    fi
     log "INFO" "Copy complete!"
 
     log "INFO" "Checking for any post-backup scripts..."
     post_backup
     log "INFO" "Post-backup script(s) complete!"
+
+    if [ $ERROR = "0" ]; then
+        backup_complete
+    fi
 }
 ### END FUNCTIONS ###
 
