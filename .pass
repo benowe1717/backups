@@ -2,6 +2,12 @@
 # Files or Directories should be one per line
 FILES=myfiles.txt
 
+# Define this as something like myexcludedfiles.txt or /home/benjamin/myexcludedfiles.txt
+# Files or Directories should be one per line and are IGNORED during backup
+# By default, this is commented out. Make sure to uncomment this if you want to
+# use exclusions in this file
+#EXCLUDED_FILES=excludedfiles.txt
+
 # Define any password variation or form here
 # You can do something like this to get a good password:
 # dd if=/dev/urandom count=1 bs=128 | sha256sum
