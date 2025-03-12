@@ -210,18 +210,18 @@ pre_backup() {
     len=${#files[@]}
 
     if [[ "$len" -eq 0 ]]; then
-        log "DEBUG" "No pre-backup scripts to run!"
+        log "DEBUG" "(pre_backup) No pre-backup scripts to run!"
         return 0
     fi
 
-    log "DEBUG" "Found $len pre-backup scripts to run..."
+    log "DEBUG" "(pre_backup) Found $len pre-backup scripts to run..."
     for file in "${files[@]}"; do
-        log "DEBUG" "Running $file..."
+        log "DEBUG" "(pre_backup) Running $file..."
         if ! /bin/bash "$file"; then
-            log "ERROR" "$file exited with $?! Consider enabling DEBUG logging..."
+            log "ERROR" "(pre_backup) $file exited with $?! Consider enabling DEBUG logging..."
             exit 1
         fi
-        log "DEBUG" "$file finished running!"
+        log "DEBUG" "(pre_backup) $file finished running!"
     done
 }
 
@@ -237,18 +237,18 @@ post_backup() {
     len=${#files[@]}
 
     if [[ "$len" -eq 0 ]]; then
-        log "DEBUG" "No post-backup scripts to run!"
+        log "DEBUG" "(post_backup) No post-backup scripts to run!"
         return 0
     fi
 
-    log "DEBUG" "Found $len post-backup scripts to run..."
+    log "DEBUG" "(post_backup) Found $len post-backup scripts to run..."
     for file in "${files[@]}"; do
-        log "DEBUG" "Running $file..."
+        log "DEBUG" "(post_backup) Running $file..."
         if ! /bin/bash "$file"; then
-            log "ERROR" "$file exited with $?! Consider enabling DEBUG logging..."
+            log "ERROR" "(post_backup) $file exited with $?! Consider enabling DEBUG logging..."
             exit 1
         fi
-        log "DEBUG" "$file finished running!"
+        log "DEBUG" "(post_backup) $file finished running!"
     done
 }
 
@@ -264,17 +264,17 @@ compress_files() {
     fi
 
     if [[ -n "$my_exclusions" ]]; then
-        args="${args} --files-from=$my_files --exclude-from=$my_exclusions"
+        args="${args} --exclude-from=$my_exclusions --files-from=$my_files"
     else
         args="${args} --files-from=$my_files"
     fi
 
-    log "DEBUG" "Executing $TAR $args"
+    log "DEBUG" "(compress_files) Executing $TAR $args"
     if ! ${TAR} ${args}; then
-        log "ERROR" "Unable to compress files!"
+        log "ERROR" "(compress_files) Unable to compress files!"
         exit 1
     fi
-    log "DEBUG" "Execution finished!"
+    log "DEBUG" "(compress_files) Execution finished!"
 }
 
 encrypt_file() {
@@ -290,12 +290,12 @@ encrypt_file() {
     args="enc -aes-256-cbc -md sha512 -pbkdf2 -pass pass:$pass -in $input -out $output"
     redacted="enc -aes-256-cbc -md sha512 -pbkdf2 -pass pass:[REDACTED] -in $input -out $output"
 
-    log "DEBUG" "Executing $OPENSSL $redacted"
+    log "DEBUG" "(encrypt_file) Executing $OPENSSL $redacted"
     if ! ${OPENSSL} ${args}; then
-        log "ERROR" "Unable to encrypt $input!"
+        log "ERROR" "(encrypt_file) Unable to encrypt $input!"
         exit 1
     fi
-    log "DEBUG" "Execution finished!"
+    log "DEBUG" "(encrypt_file) Execution finished!"
 }
 
 copy_backup() {
@@ -312,12 +312,12 @@ copy_backup() {
     fi
     args="${args} -u $nextcloud_user:$nextcloud_pass -T $file $nextcloud_url/$name/"
 
-    log "DEBUG" "Executing $CURL $args"
+    log "DEBUG" "(copy_backup) Executing $CURL $args"
     if ! ${CURL} ${args}; then
-        log "ERROR" "Unable to copy backup to Nextcloud!"
+        log "ERROR" "(copy_backup) Unable to copy backup to Nextcloud!"
         exit 1
     fi
-    log "DEBUG" "Execution finished!"
+    log "DEBUG" "(copy_backup) Execution finished!"
 }
 
 backup_complete() {
