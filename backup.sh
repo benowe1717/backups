@@ -4,7 +4,7 @@
 ### BEGIN CONSTANTS ###
 #######################
 BINARIES=("curl" "date" "dirname" "echo" "hostname" "openssl" "rm" "tar")
-DEBUG=1
+DEBUG=0
 OPTIONS=("BACKUP_DONE" "BACKUP_FOLDER" "FILES" "NEXTCLOUD_PASSWORD" "NEXTCLOUD_URL" "NEXTCLOUD_USERNAME" "PASSPHRASE")
 
 CURL=$(which curl)
@@ -288,9 +288,9 @@ encrypt_file() {
     pass="$3"
 
     args="enc -aes-256-cbc -md sha512 -pbkdf2 -pass pass:$pass -in $input -out $output"
-    args="enc -aes-256-cbc -md sha512 -pbkdf2 -pass pass:[REDACTED] -in $input -out $output"
+    redacted="enc -aes-256-cbc -md sha512 -pbkdf2 -pass pass:[REDACTED] -in $input -out $output"
 
-    log "DEBUG" "Executing $OPENSSL $args"
+    log "DEBUG" "Executing $OPENSSL $redacted"
     if ! ${OPENSSL} ${args}; then
         log "ERROR" "Unable to encrypt $input!"
         exit 1
