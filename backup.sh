@@ -3,7 +3,7 @@
 #######################
 ### BEGIN CONSTANTS ###
 #######################
-BINARIES=("curl" "date" "dirname" "echo" "hostname" "openssl" "rm" "tar")
+BINARIES=("curl" "date" "dirname" "echo" "gpg" "hostname" "openssl" "rm" "tar")
 DEBUG=0
 OPTIONS=("BACKUP_DONE" "BACKUP_FOLDER" "FILES" "NEXTCLOUD_PASSWORD" "NEXTCLOUD_URL" "NEXTCLOUD_USERNAME" "PASSPHRASE")
 
@@ -11,6 +11,7 @@ CURL=$(which curl)
 DATE=$(which date)
 DIRNAME=$(which dirname)
 ECHO=$(which echo)
+GPG=$(which gpg)
 HOSTNAME=$(which hostname)
 OPENSSL=$(which openssl)
 RM=$(which rm)
@@ -181,6 +182,21 @@ check_backup_folder_variable() {
     ${ECHO} 0
 }
 
+check_passphrase_variable() {
+    local result
+    result=$(check_variable_length "$1")
+    if [[ "$result" -ne 0 ]]; then
+        ${ECHO} 1
+        return 1
+    fi
+    result=$(check_file "$1")
+    if [[ "$result" -ne 0 ]]; then
+        ${ECHO} 2
+        return 1
+    fi
+    ${ECHO} 0
+}
+
 check_nextcloud_url_variable() {
     local regex
     local result
@@ -298,10 +314,32 @@ encrypt_file() {
     log "DEBUG" "(encrypt_file) Execution finished!"
 }
 
+encrypt_file_gpg() {
+    local args
+    local input
+    local output
+    local pass
+    local redacted
+    input="$1"
+    output="$2"
+    pass="$3"
+
+    args="--batch --output $output --symmetric --cipher-algo AES256 --no-symkey-cache --passphrase-file $pass $input"
+    redacted="--batch --output $output --symmetric --cipher-algo AES256 --no-symkey-cache --passphrase-file [REDACTED] $input"
+
+    log "DEBUG" "(encrypt_file_gpg) Executing $GPG $redacted"
+    if ! ${GPG} ${args}; then
+        log "ERROR" "(encrypt_file_gpg) Unable to encrypt $input!"
+        exit 1
+    fi
+    log "DEBUG" "(encrypt_file_gpg) Execution finished!"
+}
+
 copy_backup() {
     local args
     local file
     local name
+    local redacted
     file="$1"
     name=$(${HOSTNAME})
 
@@ -311,8 +349,9 @@ copy_backup() {
         args="-sL"
     fi
     args="${args} -u $nextcloud_user:$nextcloud_pass -T $file $nextcloud_url/$name/"
+    redacted="${args} -u [REDACTED]:[REDACTED] -T $file $nextcloud_url/$name/"
 
-    log "DEBUG" "(copy_backup) Executing $CURL $args"
+    log "DEBUG" "(copy_backup) Executing $CURL $redacted"
     if ! ${CURL} ${args}; then
         log "ERROR" "(copy_backup) Unable to copy backup to Nextcloud!"
         exit 1
@@ -383,9 +422,12 @@ required_options() {
         error=1
     fi
 
-    result=$(check_variable_length "$PASSPHRASE")
-    if [[ "$result" -ne 0 ]]; then
+    result=$(check_passphrase_variable "$PASSPHRASE")
+    if [[ "$result" -eq 1 ]]; then
         log "ERROR" "PASSPHRASE option is unset!"
+        error=1
+    elif [[ "$result" -eq 2 ]]; then
+        log "ERROR" "Unable to locate $PASSPHRASE file!"
         error=1
     fi
 
@@ -471,7 +513,7 @@ main() {
     log "DEBUG" "(main) Compression complete!"
 
     log "DEBUG" "(main) Encrypting $filepath"
-    encrypt_file "$filepath" "$encrypted_filepath" "$passphrase"
+    encrypt_file_gpg "$filepath" "$encrypted_filepath" "$passphrase"
     log "DEBUG" "(main) Encryption complete!"
 
     log "DEBUG" "(main) Removing $filepath"
