@@ -1,10 +1,8 @@
-/home/benjamin/
 /etc/cron.d/
 /etc/cron.daily/
 /etc/cron.weekly/
 /etc/cron.monthly/
 /etc/crontab
-/etc/iptables/
 /etc/logrotate.conf
 /etc/logrotate.d/
 /etc/ssh/

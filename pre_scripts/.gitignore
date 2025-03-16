@@ -1,0 +1,7 @@
+# Ignore everything in this directory
+*
+# Except this file
+!.gitignore
+!.example.sh
+# This is to make sure the folder structure is created properly in prod
+# without committing random files to the repo while testing
