@@ -381,7 +381,7 @@ required_options() {
     for ((i=0; i < ${#OPTIONS[@]}; i++)); do
         if [ ! -v "${OPTIONS[i]}" ]; then
             log "ERROR" "Problem detected with ${OPTIONS[i]}! Please double-check your config file!"
-            return 1
+            error=1
         fi
     done
 
