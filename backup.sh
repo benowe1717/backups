@@ -222,7 +222,7 @@ pre_backup() {
 
     cwd=$(get_script_dir)
     folder="$cwd/pre_scripts"
-    files=$(get_files_in_dir "$folder")
+    files=($(get_files_in_dir "$folder"))
     len=${#files[@]}
 
     if [[ "$len" -eq 0 ]]; then
@@ -249,7 +249,7 @@ post_backup() {
 
     cwd=$(get_script_dir)
     folder="$cwd/post_scripts"
-    files=$(get_files_in_dir "$folder")
+    files=($(get_files_in_dir "$folder"))
     len=${#files[@]}
 
     if [[ "$len" -eq 0 ]]; then
