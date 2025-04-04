@@ -394,7 +394,7 @@ required_options() {
         error=1
     fi
 
-    if [ -v "$EXCLUSIONS" ]; then
+    if [ -n "$EXCLUSIONS" ]; then
         result=$(check_files_variable "$EXCLUSIONS")
         if [[ "$result" -eq 1 ]]; then
             log "ERROR" "EXCLUSIONS option is enabled but unset!"
